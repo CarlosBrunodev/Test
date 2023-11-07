@@ -1,0 +1,60 @@
+######
+name: "AL-220526-09IC-infraestrutura-SIOP-problemas-nas-aplicacoes-causados-por-erros-de-certificados-v1"
+type: frequency
+index: siop*
+
+description: "Alerta para problemas de certificado que estão afetando operações."
+
+###EVENTO-QUERY###
+num_events: 1
+
+timeframe:
+    minutes: 5
+
+buffer_time:
+    minutes: 5
+
+filter:
+  - query:
+      query_string:
+        query: "message: \"*Connection timeout*\" AND kubernetes.pod.name: *prd*"
+
+query_key:
+   - "kubernetes.pod.name"
+ 
+realert:
+   minutes: 30
+
+###DESCRIPTION###
+alert_subject: "AL-220526-09IC - Infraestrutura - SIOP - Problemas nas aplicações causados por erros de certificados"
+alert_subject_args: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name"]
+alert_text_type: "alert_text_only"
+#include: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name"]
+exclude: ["_id","_index","_type"]
+alert_text_args: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name"]
+alert_text: "\n
+Alerta para problemas de certificado que estão afetando operações.\n
+- Code: AL-220526-09IC\n
+- Severidade: Critico\n
+- Data/hora: {4}\n
+- kubernetes.pod.name: {0}\n
+- kubernetes.namespace.name: {2}\n
+- kubernetes.container.name: {6}\n 
+- kubernetes.pod.ip: {5}\n
+- message: {3}\n
+- mensagem:\n
+Foram detectados evidências de problemas de certificados na aplicação {6}.\n
+Ações:\n
+• reavaliar caso os Certificate Autorities usados pelo processo da aplicação se tornaram incompatíveis por uma alteração de certificados nos serviços acessados.\n
+• reavaliar se os certificados servidos pela aplicação sofreram alguma alteração.\n
+• reavaliar possível expiração de validade Autority e/ou Certificado.\n
+• Senão depurar o cenário de problema de certificado. Outros problemas possíveis:\n
+  - desincronia de relógios podem gerar problemas no hanshake de SSL.\n
+  - problemas de DNS podem afetar a comunicação SSL."
+
+alert:
+  - "ms_teams"
+ms_teams_theme_color: "#6600ff"
+ms_teams_webhook_url: "MS Teams Webhook URL"
+ms_teams_ca_certs: False
+ms_teams_ignore_ssl_errors: True

@@ -1,0 +1,55 @@
+######
+name: "AL-220526-06IC-infraestrutura-SIOP-indícios-de-problemas-no-weave-net-v1"
+type: frequency
+index: kube*
+
+description: "Alerta de atuação para problemas/limitações conhecidas do Weave Net."
+
+###EVENTO-QUERY###
+num_events: 1
+
+timeframe:
+    minutes: 5
+
+buffer_time:
+    minutes: 5
+
+filter:
+  - query:
+      query_string:
+        query: "NOT message: (INFO* OR DEBU*) AND message: (*shutting down due*error*) OR message: (*connect: *timed*) AND kubernetes.pod.name: *weave*"
+
+query_key:
+   - "kubernetes.pod.name"
+ 
+realert:
+   minutes: 10
+
+###DESCRIPTION###
+alert_subject: "AL-220526-06IC - Infraestrutura - SIOP - Indícios de problemas no Weave Net"
+alert_subject_args: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip" ]
+alert_text_type: "alert_text_only"
+#include: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip" ]
+exclude: ["_id","_index","_type"]
+alert_text_args: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip" ]
+alert_text: "\n
+Título: Alerta de atuação para problemas/limitações conhecidas do Weave Net.\n
+- Code: AL-220526-06IC\n
+- Severidade: Crítico\n
+- Data/hora: {4}\n
+- kubernetes.pod.name: {0}\n
+- kubernetes.worker.name: {1}\n
+- kubernetes.namespace.name: {2}\n
+- kubernetes.pod.ip: {5}\n
+- message: {3}\n
+- mensagem:\n
+Foram detectados indícios de problemas relacionados ao Weave Net. Favor:\n
+• monitorar o funcionamento do Porto/Terminal correlato junto a Operação;\n
+• ao apresentar qualquer anormalidade na operação: realizar o restart do serviço Weave Net geral do custer {2}."
+
+alert:
+  - "ms_teams"
+ms_teams_theme_color: "#6600ff"
+ms_teams_webhook_url: "MS Teams Webhook URL"
+ms_teams_ca_certs: False
+ms_teams_ignore_ssl_errors: True

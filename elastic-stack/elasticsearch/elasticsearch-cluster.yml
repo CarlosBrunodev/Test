@@ -1,0 +1,51 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elastic
+  namespace: elastic-stack
+spec:
+  version: 7.17.5
+  http:
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+        - dns: elasticsearch.ingress.mgmt
+        - dns: elasticsearch-es-http.elastic-stack
+
+  nodeSets:
+  - name: elastic
+    count: 3
+    config:
+      node.roles: ["master", "ingest", "data"] 
+      xpack.ml.enabled: false
+      node.store.allow_mmap: false
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 256Gi
+    podTemplate:
+      spec:
+        initContainers:
+        # - name: install-plugins
+          # command: ['sh', '-c', 'bin/elasticsearch-plugin install --batch repository-s3']
+        # - name: configure-keystore
+          # command: ['sh', '-c', 'elasticsearch-keystore create ; echo "" | elasticsearch-keystore add -s --stdin s3.client.default.access_key ; echo "" | elasticsearch-keystore add -s --stdin s3.client.default.secret_key']
+        nodeSelector:
+          node.group: elastic
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms4g -Xmx4g"
+          resources:
+            requests:
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
+              cpu: 4

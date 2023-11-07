@@ -1,0 +1,52 @@
+######
+name: "AL-220526-05AM-aplicacoes-SIOP-automacao-resumo-de-problemas-de-agendamento-no-turno-do-porto-terminal-v1"
+type: frequency
+index: apm-management*
+
+description: "Informativo para ciência dos turnos sobre problemas de agendamento ocorridos. Invitavelmente será necessário o acionamento por tickets à Trato e o objetivo é já notificar
+sobre os tickets."
+
+###EVENTO-QUERY###
+num_events: 10
+
+timeframe:
+    minutes: 5
+
+buffer_time:
+    minutes: 5
+
+filter:
+  - query:
+      query_string:
+        query: "kubernetes.pod.name: *prd* AND message: *Falha*Trato*"
+
+query_key:
+   - "service.name"
+ 
+realert:
+   minutes: 10
+
+###DESCRIPTION###
+alert_subject: "Aplicações - SIOP - {1} com durações de transações afetadas"
+alert_subject_args: ["kubernetes.pod.name","message","@timestamp" ]
+alert_text_type: "alert_text_only"
+#include: ["kubernetes.pod.name","message","@timestamp" ]
+exclude: ["_id","_index","_type"]
+alert_text_args: ["kubernetes.pod.name","message","@timestamp" ]
+alert_text: "\n
+Título: Foram detectadas evidências lentidão nas aplicações de automação, serviço ${service.name}. Pede-se as seguintes ações para a aplicação no terminal correlato, na seguinte ordem:\n
+- Code: AL-220526-05AM\n
+- Severidade: Médio\n
+- Data/hora: {2}\n
+- kubernetes.pod.name: {0}\n
+- message: {1}\n
+- mensagem:\n
+Foram detectadas evidências de problemas de agendamento oriundos da Trato.\n
+Favor solicitar correção da trato de forma urgente para os seguintes Tickets envolvidos nas mensagens:"
+
+alert:
+  - "ms_teams"
+ms_teams_theme_color: "#6600ff"
+ms_teams_webhook_url: "MS Teams Webhook URL"
+ms_teams_ca_certs: False
+ms_teams_ignore_ssl_errors: True

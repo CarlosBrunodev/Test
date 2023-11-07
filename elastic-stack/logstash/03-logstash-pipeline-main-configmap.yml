@@ -1,0 +1,473 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline-config
+  namespace: elastic-stack
+data:
+  logstash.conf: |-
+    input {
+      beats {
+        port => "${LOGSTASH_PORT:6000}"
+      }
+    }
+
+    # ------------------------------------------------------------------- #
+    #                        Kube-system filters                          #
+    # ------------------------------------------------------------------- #
+    filter {
+      if [kubernetes][namespace] == "kube-system" {
+        if "spotinst-kubernetes-cluster-controller" in [kubernetes][pod][name] {
+          grok {
+            match => { "message" => '%{WORD:log.level} \[%{TIMESTAMP_ISO8601:log.timestamp}\] \[%{NOTSPACE:log.class}\] %{GREEDYDATA:log.message}' }
+          }
+        }
+        else if "tiller-deploy" in [kubernetes][pod][name] {
+          dissect {
+            mapping => {
+              "message" => "[%{internal_component}] %{log_timestamp} %{log_message}"
+            }
+          }
+          if "_dissectfailure" in [tags] {
+            mutate {
+                add_field => { "filter_failed" => "tiller-deploy" }
+            }
+          }
+        }
+        else if "coredns" in [kubernetes][pod][name] {
+          dissect {
+            mapping => {
+              "message" => "[%{internal_component}] %{log_timestamp} %{log_message}"
+            }
+          }
+          if "_dissectfailure" in [tags] {
+            mutate {
+                add_field => { "filter_failed" => "metrics-server" }
+            }
+          }
+        }
+      }
+      if [kubernetes][namespace] == "ingress-nginx" {
+        grok {
+          match => { "message" => '%{IP:client_ip} - %{NOTSPACE:user} \[%{HTTPDATE:log_timestamp}\] "%{WORD:method} %{DATA:request_uri}" %{NUMBER:status_code} %{NUMBER:byte_send} "%{DATA:request_referrer}" "%{DATA:user_agent}" %{NUMBER:request_length} %{NUMBER:response_time} \[%{NOTSPACE}\] \[\] %{IP:upstream_proxy}:%{NUMBER:upstream_port} %{NUMBER:upstream_bytes_sent;long} %{NUMBER:upstream_response_time} %{NUMBER:upstream_response} %{NOTSPACE:connection_id}' }
+        }
+        if "_grokparsefailure" in [tags] {
+          mutate {
+              add_field => { "filter_failed" => "ingress" }
+          }
+        }
+      }
+      if [kubernetes][namespace] == "cert-manager" {
+        grok {
+          match => { "message" => '%{NOTSPACE:evente_id} %{TIME:log_timestamp} %{NUMBER} %{NOTSPACE:internal_component}\] %{NOTSPACE:certmanager_class} %{GREEDYDATA:log_message}' }
+        }
+        kv {
+          source => "log_message"
+          transform_key => "lowercase"
+          transform_value => "lowercase"
+        }
+        if "_kv_filter_error" in [tags] or "_grokparsefailure" in [tags] {
+          mutate {
+              add_field => { "filter_failed" => "cert-manager" }
+          }
+        }
+      }
+      if [kubernetes][namespace] == "cattle-system" {
+        if "rancher" in [kubernetes][pod][name] {
+          grok {
+            match => { "message" => '%{DATE:log_timestamp} %{TIME:log_timestamp} \[%{WORD:loglevel}\] %{GREEDYDATA:log_message}' }
+          }
+        }
+        else {
+          kv {
+            transform_key => "lowercase"
+            transform_value => "lowercase"
+          }
+          if "_kv_filter_error" in [tags] or "_grokparsefailure" in [tags] {
+            mutate {
+                add_field => { "filter_failed" => "cattle-system" }
+            }
+          }
+        }
+      }
+      if [kubernetes][namespace] == "cattle-prometheus" {
+        if "exporter-kube-state-cluster-monitoring" not in [kubernetes][pod][name] {
+          kv {
+            transform_key => "lowercase"
+            transform_value => "lowercase"
+          }
+        }
+        else if "_kv_filter_error" in [tags] or "exporter-kube-state-cluster-monitoring" in [kubernetes][pod][name] {
+          grok {
+            match => { "message" => '%{NOTSPACE:evente_id} %{TIME:log_timestamp} %{NUMBER} %{NOTSPACE:internal_component}\] %{NOTSPACE:cattle_class} %{GREEDYDATA:log_message}' }
+          }
+        }
+      }
+    }
+
+    # ------------------------------------------------------------------- #
+    #                        plataforma-api filters                       #
+    # ------------------------------------------------------------------- #
+    filter {
+      if "plataforma-api" in [kubernetes][namespace] {
+        json {
+          source => "message"
+        }
+      }
+    }
+
+    # ------------------------------------------------------------------- #
+    #                        mongodb filters                              #
+    # ------------------------------------------------------------------- #
+    filter {
+      if "mongodb" in [kubernetes][namespace] {
+        if "I NETWORK" in [message] {
+          if "listener" in [message] {
+            grok {
+              match => {
+                "message" => '%{TIMESTAMP_ISO8601} I NETWORK  \[%{WORD:module}\] %{GREEDYDATA:action} %{IP:source_host}\:%{NUMBER:port} #%{NUMBER:ID} \(%{GREEDYDATA:connection_status}\)'
+              }
+            } 
+          }
+          else {
+            if "metadata" in [message] {
+              grok {
+                match => {
+                  "message" => '%{TIMESTAMP_ISO8601} I NETWORK  \[%{WORD:module}\] %{GREEDYDATA:action} %{IP:source_host}\:%{NUMBER:port} %{GREEDYDATA:client_metadata}'
+                }
+              }
+            }
+            else {
+              grok {
+                match => {
+                  "message" => '%{TIMESTAMP_ISO8601} I NETWORK  \[%{WORD:module}\] %{GREEDYDATA:action} %{IP:source_host}\:%{NUMBER:port} \(%{GREEDYDATA:connection_status}\)'
+                }
+              } 
+            }
+          }
+        }
+        else {
+          if "authenticated" in [message] {
+            grok {
+              match => {
+                "message" => '%{TIMESTAMP_ISO8601} I ACCESS   \[%{WORD:module}\] %{GREEDYDATA:action} %{IP:source_host}\:%{NUMBER:port}'
+              }
+            }
+          }
+          else {
+            grok {
+              match => {
+                "message" => '%{TIMESTAMP_ISO8601} I ASIO     \[%{NOTSPACE:module}\] %{GREEDYDATA:partial_message}'
+              }
+            } 
+          }
+        }
+      }
+    }
+
+    # ------------------------------------------------------------------- #
+    #                        plataforma-audit-listener filters            #
+    # ------------------------------------------------------------------- #
+    filter {
+      if "plataforma-audit-listener" in [kubernetes][namespace] {
+        grok {
+          match => {
+            "message" => "\[%{TIME} %{WORD:loglevel}] Mensagem \'%{NOTSPACE:ID}' %{GREEDYDATA:partial_message}"
+          }
+        } 
+      }
+    }
+
+    # ------------------------------------------------------------------- #
+    #                        gateway-integracao filters                   #
+    # ------------------------------------------------------------------- #
+    filter {
+      if "gateway-integracao" in [kubernetes][namespace] {
+        if "Header" in [message] {
+          if "INF" in [message] {
+            grok {
+              pattern_definitions => { "ALL" => "(.|\r|\n)*" }
+              match => {
+                "message" => '\[%{TIME} %{WORD:loglevel}\] Header: \{\n%{SPACE}%{ALL:header}\} {%{GREEDYDATA:partial_message}}'
+              }
+            }
+            mutate {
+              gsub => [ 
+                "header", "\n", "",
+                "header", "\[", "" 
+              ]
+            }
+            kv { 
+              source => "partial_message"
+              transform_value => "lowercase"
+              remove_char_value => '\"'
+              include_brackets => false
+            }     
+            kv { 
+              source => "header"
+              transform_value => "lowercase"
+              remove_char_value => '\"'
+              remove_char_key => '\"'
+              include_brackets => false
+              value_split => ":"
+              field_split => "\],"
+            }    
+          }
+          else {
+            grok {
+              pattern_definitions => { "ALL" => "(.|\r|\n)*" }
+              match => {
+                "message" => '%{GREEDYDATA}: %{GREEDYDATA:module}\n%{GREEDYDATA}:%{SPACE}\{\n%{SPACE}%{ALL:partial_message}\}'
+              }
+            }
+            mutate {
+              gsub => [ 
+                "partial_message", "\n", "",
+                "partial_message", "\[", "" 
+              ]
+            }
+            kv { 
+              source => "partial_message"
+              transform_value => "lowercase"
+              remove_char_value => '\"'
+              remove_char_key => '\"'
+              include_brackets => false
+              value_split => ":"
+              field_split => "\],"
+            } 
+          }    
+        }
+        else {
+          grok {
+            match => {
+              "message" => '\[%{TIME} %{WORD:loglevel}\] %{GREEDYDATA:middle_message} {%{GREEDYDATA:partial_message}}'
+            }
+          }
+          kv { 
+            source => "partial_message"
+            transform_value => "lowercase"
+            remove_char_value => '\"'
+            include_brackets => false
+          }
+        }
+      }
+    }
+
+    # ------------------------------------------------------------------- #
+    #                        application filters Production (classic)     #
+    # ------------------------------------------------------------------- #
+    filter {
+      # VisualCron logs
+      if [fields][application] == "VisualCron" {
+        if "trayclient" in [source] {
+          grok {
+            match => {
+              "message" => "%{DATESTAMP:log.timestamp}\t\t%{GREEDYDATA:log.action}"
+            }
+          }
+        } else if "interactive" in [source] {
+          grok {
+            match => {
+              "message" => "%{DATESTAMP:log.timestamp}  %{GREEDYDATA:log.action}"
+            }
+          }
+        } else if "server" in [source] {
+          grok {
+            match => {
+              "message" => "%{DATESTAMP:log.timestamp}\t%{WORD:log.level}	%{GREEDYDATA:log.action}"
+            }
+          }
+        }
+        # index name selector
+        mutate {
+          add_field => {
+            "[@metadata][index_reference]" => "application"
+            "[@metadata][environment]" => "production"
+          }
+        }
+        # # drop null messages
+        # if "_grokparsefailure" in [tags] {
+        #   drop {}
+        # }
+      }
+      # application logs
+      else if [fields][model] == "application" {
+        grok {
+          match => {
+            "message" => [
+              "%{TIMESTAMP_ISO8601:logged_at} \[%{DATA:loglevel}\] GF\.%{DATA:application}\.Logs\.Log \[%{DATA}\] - %{GREEDYDATA:log_message}",
+              "%{DATESTAMP:logged_at} - \[%{DATA:loglevel}\]%{GREEDYDATA:log_message}",
+              "%{DATESTAMP:logged_at} \[%{DATA:loglevel}\] %{GREEDYDATA:log_message}",
+              "%{NOTSPACE:id} %{NOTSPACE:logged_at} %{NOTSPACE} : %{GREEDYDATA:log_message}",
+              "%{TIMESTAMP_ISO8601:logged_at}",
+              "%{DATESTAMP:logged_at}"
+            ]
+          }
+        }
+        grok {
+          match => {
+            "[log][file][path]" => [
+              "%{NOTSPACE}\\Logs\\%{GREEDYDATA:application}\\%{GREEDYDATA}",
+              "%{NOTSPACE}\\Logs\\%{GREEDYDATA:application}\.%{GREEDYDATA}"
+            ]
+          }
+        }
+        # parse and use timestamp from log line
+        date {
+          match => [ "logged_at", "dd/MM/yyyy HH:mm:ss", "yyyyMMdd-HH:mm:ss", "ISO8601" ]
+          timezone => "-0300"
+          target => "@timestamp"
+        }
+        # index name selector
+        mutate {
+            add_field => {
+              "[@metadata][index_reference]" => "application"
+              "[@metadata][environment]" => "production"
+            }
+            remove_field => [ "logged_at" ]
+        }
+      }
+      # sinacor logs
+      else if [fields][model] == "sinacor" {
+        grok {
+          match => {
+            "message" => [
+              "%{NOTSPACE:id} %{NOTSPACE:logged_at} %{NOTSPACE} : %{GREEDYDATA:log_message}",
+              "%{TIMESTAMP_ISO8601:logged_at}",
+              "%{DATESTAMP:logged_at}"
+            ]
+          }
+        }
+        # parse and use timestamp from log line
+        date {
+          match => [ "logged_at", "dd/MM/yyyy HH:mm:ss", "yyyyMMdd-HH:mm:ss", "ISO8601" ]
+          timezone => "-0300"
+          target => "@timestamp"
+        }
+        # index name selector
+        mutate {
+            add_field => {
+              "[@metadata][index_reference]" => "application"
+              "[@metadata][environment]" => "production"
+            }
+            remove_field => [ "logged_at" ]
+        }
+      }
+      # iss logs
+      else if [fields][service] == "iis" {
+        # filters for access logs
+        if [fields][model] == "access" {
+          if "LogsConvertidos3" in [source] {
+            dissect {
+              mapping => {  
+                "message" => "%{+iis.time} %{+iis.time/2} %{iis.logformat} %{iis.site.name} %{iis.access.server_ip} %{iis.access.method} %{iis.access.path} %{iis.action} %{iis.access.port} %{} %{iis.access.remote_ip} %{iis.access.http_version} %{iis.access.response_code} %{iis.access.win32_status} %{iis.access.body_sent.bytes} %{iis.access.body_received.bytes} %{iis.access.request_time_ms}"
+              }
+            }
+            if "_dissectfailure" in [tags] {
+              dissect {
+                mapping => {  
+                  "message" => "%{+iis.time} %{+iis.time/2} %{iis.logformat} %{iis.access.server_ip} %{iis.access.method} %{iis.access.path} %{iis.action} %{iis.access.port} %{} %{iis.access.remote_ip} %{iis.access.useragent} %{iis.access.referrer} %{iis.access.response_code} %{iis.access.body_sent.bytes} %{iis.access.body_received.bytes} %{iis.access.request_time_ms}"
+                }
+              }
+            }
+          }
+          else {
+            grok {
+              match => {
+                "message" => [
+                  "%{TIMESTAMP_ISO8601:iis.access.logtime} %{NOTSPACE:iis.access.logforma} %{IP:iis.access.server_ip} %{WORD:iis.access.method} %{URIPATH:iis.access.path} %{NOTSPACE:iis.access.action} %{NUMBER:iis.access.port} %{NOTSPACE:iis.access.userauth} %{IP:iis.access.remote_ip} %{NOTSPACE} %{NOTSPACE} %{NOTSPACE:iis.access.endpoint} %{NUMBER:iis.access.response_code} %{NUMBER:iis.access.win32_status} %{NUMBER:iis.access.body_sent.bytes} %{NUMBER:iis.access.body_received.bytes} %{NUMBER:iis.access.request_time_ms}"
+                ]
+              }
+            }
+            grok {
+              match => {
+                "iis.access.path" => [
+                  "/%{WORD:iis.application}"
+                ]
+              }
+            }
+          }
+        }
+        # filters for errors logs
+        if [fields][model] == "errors" {
+          grok {
+            match => {
+              "message" => [
+                "%{TIMESTAMP_ISO8601:iis.time} %{IPORHOST:iis.error.remote_ip} %{NUMBER:iis.error.remote_port} %{IPORHOST:iis.error.server_ip} %{IPORHOST:iis.error.server_port} (?:HTTP/%{NUMBER:iis.error.http_version}|-) (?:%{WORD:iis.error.method}|-) (?:%{URIPATHPARAM:iis.error.url}|-)(?: -)? (?:%{NUMBER:iis.error.response_code}|-) (?:%{NUMBER}|-) (?:%{NOTSPACE:iis.error.reason_phrase}|-) (?:%{NOTSPACE:iis.error.queue_name}|-)",
+                "%{TIMESTAMP_ISO8601:iis.time}"
+              ]
+            }
+          }
+        }
+        # parse and use timestamp from log line
+        date {
+          match => [ "iis.time", "yyyy-MM-dd HH:mm:ss", "ISO8601" ]
+          timezone => "-0300"
+          target => "@timestamp"
+        }
+        # index name selector
+        mutate {
+            add_field => {
+              "[@metadata][index_reference]" => "web_transactions"
+              "[@metadata][environment]" => "production"
+            }
+            remove_field => [ "iis.time" ]
+        }
+      }
+      # ninject logs
+      else if [fields][model] == "audit" {
+        grok {
+          match => {
+            "message" => [
+              "%{WORD}%{SPACE}: %{TIME:time}%{SPACE}%{WORD}%{SPACE}: %{GREEDYDATA:type}%{SPACE}CALLER MEMBER NAME: %{GREEDYDATA:caller_member_name}%{SPACE}CALLER FILE PATH%{SPACE}: %{WINPATH:caller_file_path}%{SPACE}CALLER LINE NUMBER: %{NUMBER:caller_line_number}%{SPACE}%{WORD}%{SPACE}:%{SPACE}%{GREEDYDATA:userid}%{SPACE}%{GREEDYDATA:drop}%{SPACE}LOG MESSAGE: %{GREEDYDATA:log_message}%{SPACE}%{GREEDYDATA:log_message}%{SPACE}%{GREEDYDATA:drop}%{SPACE}%{GREEDYDATA:drop}"        
+            ]
+          }
+        }
+        # index name selector
+        mutate {
+          add_field => {
+            "[@metadata][index_reference]" => "application"
+            "[@metadata][environment]" => "production"
+          }
+          remove_field => [ "drop" ]
+        }
+        # drop null userid
+        if ".com" not in [userid] {
+          mutate {
+            remove_field => [ "userid" ]
+          }
+        }
+        # drop null messages
+        if "_grokparsefailure" in [tags] {
+          drop {}
+        }
+      }
+    }
+
+    # Global filter
+    filter {
+      if [message] =~ /^\s*$/ {
+        drop { }
+      }
+      if "NHibernateSQL" in [source] {
+        drop { }
+      }
+      if "0020" in [@timestamp] {
+        drop {}
+      }
+      if "GenialWeb-PROD" in [beat][hostname] or "indice-production-sp" in [beat][hostname] or "plataforma-production-sp" in [beat][hostname] {
+        mutate {
+          remove_field => [ "timestamp", "@timestamp" ]
+        }
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => "${LOGSTASH_ES_HOST}"
+        user => "${LOGSTASH_ES_USERNAME}"
+        password => "${LOGSTASH_ES_PASSWORD}"
+        retry_on_conflict => 0
+        cacert => "/usr/share/logstash/certs/ca.crt"
+        index => "%{[@metadata][index_reference]}-%{[@metadata][environment]}-%{+YYYY.MM.dd}"
+      }
+    }

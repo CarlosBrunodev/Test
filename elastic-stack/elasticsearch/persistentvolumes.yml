@@ -1,0 +1,117 @@
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: pv-elasticsearch-data-elastic-es-elastic-0
+  namespace: elastic-stack
+  labels:
+    type: local
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 256Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/elastic/elastic-es-elastic-0"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - "azumgtk8swrk005-elastic"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elasticsearch-data-elastic-es-elastic-0
+  namespace: elastic-stack
+spec:
+  storageClassName: ""
+  volumeMode: Filesystem
+  volumeName: pv-elasticsearch-data-elastic-es-elastic-0
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Gi
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: pv-elasticsearch-data-elastic-es-elastic-1
+  namespace: elastic-stack
+  labels:
+    type: local
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 256Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/elastic/elastic-es-elastic-1"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - "azumgtk8swrk006-elastic"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elasticsearch-data-elastic-es-elastic-1
+  namespace: elastic-stack
+spec:
+  storageClassName: ""
+  volumeMode: Filesystem
+  volumeName: pv-elasticsearch-data-elastic-es-elastic-1
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Gi
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: pv-elasticsearch-data-elastic-es-elastic-2
+  namespace: elastic-stack
+  labels:
+    type: local
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 256Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/elastic/elastic-es-elastic-2"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - "azumgtk8swrk007-elastic"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elasticsearch-data-elastic-es-elastic-2
+  namespace: elastic-stack
+spec:
+  storageClassName: ""
+  volumeMode: Filesystem
+  volumeName: pv-elasticsearch-data-elastic-es-elastic-2
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Gi

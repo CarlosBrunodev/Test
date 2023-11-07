@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-snmp-pipeline-manager-config
+  namespace: elastic-stack
+data:
+  pipelines.yml: |-
+    - pipeline.id: main
+      path.config: "/usr/share/logstash/pipeline/main"

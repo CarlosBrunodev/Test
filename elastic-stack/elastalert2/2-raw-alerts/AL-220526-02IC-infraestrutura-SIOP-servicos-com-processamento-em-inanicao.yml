@@ -1,0 +1,57 @@
+######
+name: "AL-220526-02IC-infraestrutura-SIOP-servicos-com-processamento-em-inanicao-v1"
+type: frequency
+index: apm-management*
+
+description: "Alertar área de aplicações e SRE para melhoria de desempenho de processamento a médio ou curto prazo."
+
+###EVENTO-QUERY###
+num_events: 10
+
+timeframe:
+    minutes: 5
+
+buffer_time:
+    minutes: 5
+
+filter:
+  - query:
+      query_string:
+        query: "service.environment : (production) AND service.name: (*SIOP*) AND system.process.cpu.total.norm.pct > 0.98"
+
+query_key:
+   - "service.name"
+   - "system.process.cpu.total.norm.pct"
+
+realert:
+   minutes: 5
+
+###DESCRIPTION###
+alert_subject: "Aplicações - SIOP - Serviço {1} com evidência de processamento em inanição"
+alert_subject_args: ["service.environment","service.name","system.process.cpu.total.norm.pct","@timestamp" ]
+alert_text_type: "alert_text_only"
+include: ["service.environment","service.name","system.process.cpu.total.norm.pct","@timestamp" ]
+exclude: ["_id","_index","_type"]
+alert_text_args: ["service.environment","service.name","system.process.cpu.total.norm.pct","@timestamp" ]
+alert_text: "\n
+Título:\n
+Aplicações - SIOP - Serviço {1} com evidência de processamento em inanição\n
+- code: AL-220526-01AM
+- Severidade: Médio
+- Data/hora: {3}\n
+- service.environment: {0}\n
+- service.name: {1}\n
+- system.process.cpu.total.norm.pct: {2}\n
+- mensagem: Foi detectado indícios de processamento em inanição no serviço {1}. Pode ser indicativo de processamento sem previsão de parada, deadlock e/ou estado crítico irrecuperável da aplicação. A qualquer momento poderá afetar a operação do Porto ou
+Terminal correlacionado. 
+Ações: \n
+- monitoramento intensivo do estado do sistema. \n
+- reinicialização dos serviços, caso não exista curva de melhora. \n
+- aumento de recursos computacionais – caso exista disponibilidade e o reinício dos serviços não surtam efeito."
+
+alert:
+  - "ms_teams"
+ms_teams_theme_color: "#6600ff"
+ms_teams_webhook_url: "MS Teams Webhook URL"
+ms_teams_ca_certs: False
+ms_teams_ignore_ssl_errors: True

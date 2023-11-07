@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline-siop-config
+  namespace: elastic-stack
+data:
+  logstash.conf: |-
+    input {
+      beats {
+        port => "${SIOP_PORT:6001}"
+      }
+    }
+    
+    output {
+      elasticsearch {
+        hosts => "${LOGSTASH_ES_HOST}"
+        user => "${LOGSTASH_ES_USERNAME}"
+        password => "${LOGSTASH_ES_PASSWORD}"
+        retry_on_conflict => 0
+        cacert => "/usr/share/logstash/certs/ca.crt"
+        index => "%{[@metadata][index_reference]}-%{[@metadata][environment]}-%{+YYYY.MM.dd}"
+      }
+    }

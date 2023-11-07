@@ -1,0 +1,54 @@
+######
+name: "AL-220526-14AM-aplicacoes-SIOP-alta-duracao-de-transacoes-gerais-de-aplicacoes-v1"
+type: frequency
+index: apm*
+
+description: "Monitorar transações dispendiosas em geral nas aplicações do SIOP e promover melhorias."
+
+###EVENTO-QUERY###
+num_events: 1
+
+timeframe:
+    minutes: 5
+
+buffer_time:
+    minutes: 5
+
+filter:
+  - query:
+      query_string:
+        query: "service.name: (*SIOP*) AND service.environment: production AND transaction.duration.us >= 120000000"
+
+query_key:
+   - "service.name"
+ 
+realert:
+   minutes: 30
+
+###DESCRIPTION###
+alert_subject: "AL-220526-14AM - Aplicacoes - SIOP - Alta duração de transações gerais de aplicacoes"
+alert_subject_args: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name","service.name","transaction.name"]
+alert_text_type: "alert_text_only"
+#include: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name","service.name","transaction.name"]
+exclude: ["_id","_index","_type"]
+alert_text_args: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name","service.name","transaction.name"]
+alert_text: "\n
+Monitorar transações dispendiosas em geral nas aplicações do SIOP e promover melhorias.\n
+- Code: AL-220526-14AM\n
+- Severidade: Critico\n
+- Data/hora: {4}\n
+- service.name: {7}\n
+- kubernetes.pod.name: {0}\n
+- kubernetes.namespace.name: {2}\n
+- kubernetes.container.name: {6}\n 
+- kubernetes.pod.ip: {5}\n
+- message: {3}\n
+- mensagem:\n
+Alta duração de transações gerais relacionadas ao serviço ${service.name}. Favor avaliar possível ofensor causa raiz."
+
+alert:
+  - "ms_teams"
+ms_teams_theme_color: "#6600ff"
+ms_teams_webhook_url: "MS Teams Webhook URL"
+ms_teams_ca_certs: False
+ms_teams_ignore_ssl_errors: True

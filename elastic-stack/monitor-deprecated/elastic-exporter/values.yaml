@@ -1,0 +1,48 @@
+replicaCount: 1
+restartPolicy: Always
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+secretMounts:
+  - name: elastic-es-http-certs-internal
+    secretName: elastic-es-http-certs-internal
+    path: /ssl
+
+es:
+  uri: https://elastic:xxxxxxxxxx@elastic-es-http.elastic-stack:9200
+  all: false
+  indices: true
+  indices_settings: false
+  shards: true
+  snapshots: true
+  cluster_settings: true
+  timeout: 60s
+  sslSkipVerify: false
+
+  ssl:
+    enabled: true
+    useExistingSecrets: true
+    ca:
+      path: /ssl/ca.crt
+    client:
+      pemPath: /ssl/tls.crt
+      keyPath: /ssl/tls.key
+
+web:
+  path: /metrics
+
+serviceMonitor:
+  enabled: true
+  namespace: cattle-prometheus
+  interval: 60s
+  scrapeTimeout: 50s
+  scheme: http
+
+prometheusRule:
+  enabled: false

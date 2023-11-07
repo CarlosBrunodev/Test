@@ -1,0 +1,49 @@
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: elastic
+  namespace: elastic-stack
+spec:
+  version: 7.17.5
+  count: 1
+  elasticsearchRef:
+    name: elastic
+  kibanaRef:
+    name: elastic
+  config:
+    output.elasticsearch.index: "apm-%{+yyyy.MM.dd}"
+    setup:
+      template.name: "apm-"
+      template.pattern: "apm-*"
+    podTemplate:
+      spec:
+        nodeSelector:
+          node.group: application
+
+
+
+# apiVersion: apm.k8s.elastic.co/v1
+# kind: ApmServer
+# metadata:
+#   name: elastic
+#   namespace: elastic-stack
+# spec:
+#   version: 7.17.0
+#   count: 1
+#   elasticsearchRef:
+#     name: elastic
+#   kibanaRef:
+#     name: elastic
+#   config:
+#       output:
+#         elasticsearch:
+#           index: "apm-%{+yyyy.MM.dd}"
+#       apm-server:
+#         kibana: 
+#           enabled: true
+#         ssl:
+#           enabled: false
+#       setup:
+#         template:
+#           name: 'apm'
+#           pattern: 'apm-*'

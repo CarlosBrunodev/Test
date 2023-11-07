@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline-manager-config
+  namespace: elastic-stack
+data:
+  pipelines.yml: |-
+    - pipeline.id: main
+      path.config: "/usr/share/logstash/pipeline/main"
+    - pipeline.id: siop
+      path.config: "/usr/share/logstash/pipeline/siop"
+    # Pipeline to Elastalert
+    - pipeline.id: elastalert
+      path.config: "/usr/share/logstash/pipeline/elastalert"
+    # Pipeline to Collector SNMP
+    - pipeline.id: colletor-snmp
+      path.config: "/usr/share/logstash/pipeline/collector-snmp"

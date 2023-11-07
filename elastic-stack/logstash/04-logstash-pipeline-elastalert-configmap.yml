@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline-elastalert-config
+  namespace: elastic-stack
+data:
+  logstash.conf: |-
+    input {
+      elasticsearch {
+        hosts => "${LOGSTASH_ES_HOST}"
+        index => "elastalert"
+        user => "${LOGSTASH_ES_USERNAME}"
+        password => "${LOGSTASH_ES_PASSWORD}"
+
+        ca_file => "/usr/share/logstash/certs/ca.crt"
+        ssl => true
+
+        query => '{"query": { "range": { "@timestamp": {"gte": "now-24h","lt": "now" }} },"sort": [{  "@timestamp": {"order": "desc" }}]}'
+        size => 300
+        scroll => "3m"
+        schedule => "*/5 * * * *"
+        id => "input-elastalert_status_ecs"
+        docinfo => true
+
+        id => "input-elastalert_status_ecs"
+        }
+    }
+
+    filter {
+      mutate {
+        remove_field => [ "host" ]
+      }
+    }
+
+    filter {
+      json {
+        source => "message"
+      }
+    }
+
+    filter {
+      mutate  {
+              remove_field => [ "[match_body][_index]"]
+              remove_field => [ "[match_body][@timestamp]"]
+              remove_field => [ "[match_body][_type]"]
+              remove_field => [ "[match_body][_id]"]
+              add_field => { "[event][kind]" => "external" }
+            }
+            ruby {
+            code => '
+                event.get("match_body").each {|k,v| event.set(k, v)}
+            '
+            remove_field => ["[match_body]","_index" ]
+            }
+    }
+
+    output {
+      ##file {
+      ##   path => "/var/log/elastalert/debug-logstash.log"
+      ##    }
+
+      elasticsearch {
+        hosts => "${LOGSTASH_ES_HOST}"
+        user => "${LOGSTASH_ES_USERNAME}"
+        password => "${LOGSTASH_ES_PASSWORD}"
+        index => "elastalert_status_ecs"
+
+        http_compression => true
+
+        ilm_enabled => false
+
+        cacert => "/usr/share/logstash/certs/ca.crt"
+
+        id => "output-elastalert_status_ecs"
+
+        document_id => "%{[@metadata][_id]}"
+      }
+    }

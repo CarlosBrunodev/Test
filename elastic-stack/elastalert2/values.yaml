@@ -1,0 +1,208 @@
+# number of replicas to run
+replicaCount: 1
+
+# number of helm release revisions to retain
+revisionHistoryLimit: 5
+
+# Default internal between alert checks against the elasticsearch datasource, in minutes
+runIntervalMins: 1
+
+# Location of directory where rules reside
+rulesFolder: "/opt/elastalert/rules"
+
+# Enable/disabe subdirectory scanning for rules
+scanSubdirectories: true
+
+# Default rule buffer duration, in minutes
+bufferTimeMins: 15
+
+# Amount of time to retry and deliver failed alerts (1440 minutes per day)
+alertRetryLimitMins: 2880
+
+# Default time before realerting, in minutes
+realertIntervalMins: ""
+
+# For ES 5: The name of the index which stores elastalert 2 statuses, typically elastalert_status
+# For ES 6: The prefix of the names of indices which store elastalert 2 statuses, typically elastalert
+#
+writebackIndex: elastalert
+
+image:
+  # docker image
+  repository: jertel/elastalert2
+  # docker image tag
+  tag: 2.5.0
+  pullPolicy: IfNotPresent
+  pullSecret: ""
+
+resources: {} 
+
+# Annotations to be added to pods
+podAnnotations: {}
+
+elasticsearch:
+  # elasticsearch endpoint e.g. (svc.namespace||svc)
+  # host: elastic-es-http.elastic-stack
+  # port: 9200
+  # useSsl: "True"
+  # username: "elastic"
+  # password: "c3b9dHyZx02rFL5Q64DtA978"
+  # run_every:
+  #   minutes: 5
+  # buffer_time:
+  #   minutes: 1440
+  # alert_time_limit:
+  #   minutes: 240
+  # Specifies an existing secret to be used for the ES username/password
+  #credentialsSecret: ""
+  # The key in elasticsearch.credentialsSecret that stores the ES password
+  #credentialsSecretUsernameKey: "elastic-es-elastic-user"
+  # The key in elasticsearch.credentialsSecret that stores the ES username
+  #credentialsSecretPasswordKey: "elastic-es-elastic-user"
+  # whether or not to verify TLS certificates
+  verifyCerts: "False"
+  # Enable certificate based authentication
+  # path to a PEM certificate to use as the client certificate
+  # clientCert: "/certs/tls.crt"
+  # #path to a private key file to use as the client key
+  # clientKey: "/certs/tls.key"
+  # #path to a CA cert bundle to use to verify SSL connections
+  # caCerts: "/certs/ca.crt"
+  # # certs volumes, required to mount ssl certificates when elasticsearch has tls enabled
+  # certsVolumes:
+  #   - name: elastic-apm-http-certs-internal
+  #     secret:
+  #       defaultMode: 420
+  #       secretName: elastic-apm-http-certs-internal
+  # # mount certs volumes, required to mount ssl certificates when elasticsearch has tls enabled
+  # certsVolumeMounts:
+  #   - name: elastic-apm-http-certs-internal
+  #     mountPath: /certs
+  #     readOnly: true
+
+# Optional env variables for the pod
+optEnv: []
+
+extraConfigOptions: {}
+  # # Options to propagate to all rules, e.g. a common slack_webhook_url or kibana_url
+  # # Please note at the time of implementing this value, it will not work for required_locals
+  # # Which MUST be set at the rule level, these are: ['alert', 'type', 'name', 'index']
+  # kibana_url: https://kibana.yourdomain.com
+  # slack_webhook_url: dummy
+
+# To load ElastAlert 2 config via secret, uncomment the line below
+secretConfigName: elastalert-config-secret
+
+
+# To load ElastAlert's rules via secret, uncomment the line below
+secretRulesName: elastalert-rules-secret
+# Additionally, you must specificy which rules to load from the secret
+#secretRulesList: [ "AL-220526-01AM", "AL-220526-02IC", "AL-220526-03IC", "AL-220526-04AM", "AL-220526-05AM"]
+
+secretRulesList: ["AL-220526-01AM-aplicacoes-SIOP-processamento-saturado.yml","AL-220526-02IC-infraestrutura-SIOP-servicos-com-processamento-em-inanicao.yml","AL-220526-03IC-aplicacoes-SIOP-barramento-memory-leak-v1.yml","AL-220526-04AM-aplicacoes-SIOP-automacao-duracoes-de-transacoes-de-automacao-afetadas-v1.yml","AL-220526-05AM-aplicacoes-SIOP-automacao-resumo-de-problemas-de-agendamento-no-turno-do-porto-terminal-v1.yml","AL-220526-06IC-infraestrutura-SIOP-indicios-de-problemas-no-weave-net-v1.yml","AL-220526-07IM-infraestrutura-SIOP-problemas-de-conectividade-que-afetam-aplicacoes-v1.yml","AL-220526-08IM-infraestrutura-SIOP-problemas-de-envio-de-estatistica-de-instrumentacao-v1.yml","AL-220526-09IC-infraestrutura-SIOP-problemas-nas-aplicacoes-causados-por-erros-de-certificados-v1.yml","AL-220526-14AM-aplicacoes-SIOP-alta-duracao-de-transacoes-gerais-de-aplicacoes-v1.yml"]
+# Command and args override for container e.g. (https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/)
+# command: ["YOUR_CUSTOM_COMMAND"]
+# args: ["YOUR", "CUSTOM", "ARGS"]
+
+# specifies the rules volume to be used
+rulesVolumeName: "rules"
+
+# additional rule configurations e.g. (http://elastalert2.readthedocs.io/en/latest/)
+rules: 
+  # deadman_slack: |-
+  #   ---
+  #   name: Deadman Switch Slack
+  #   type: frequency
+  #   index: apm-*
+  #   num_events: 3
+  #   buffer_time:
+  #     minutes: 10
+  #   timeframe:
+  #     minutes: 3
+  #   filter:
+  #   - term:
+  #       processor.name: "transaction"
+  #   alert:
+  #   - "slack"
+  #   slack:
+  #   slack_webhook_url: dummy
+  # deadman_pagerduty: |-
+  #   ---
+  #   name: Deadman Switch PagerDuty
+  #   type: frequency
+  #   index: containers-*
+  #   num_events: 3
+  #   timeframe:
+  #     minutes: 3
+  #   filter:
+  #   - term:
+  #       processor.name: "transaction"
+  #   alert:
+  #   - "pagerduty"
+  #   pagerduty:
+  #   pagerduty_service_key: dummy
+  #   pagerduty_client_name: ElastAlert Deadman Switch
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+# Enable pod security policy
+# https://kubernetes.io/docs/concepts/policy/pod-security-policy/
+# DEPRECATED in Kubernetes 1.21 (https://kubernetes.io/blog/2021/04/06/podsecuritypolicy-deprecation-past-present-and-future/)
+podSecurityPolicy:
+  create: false
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+podSecurityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+  runAsGroup: 1000
+
+# Support using node selectors and tolerations
+# nodeSelector:
+#   "node-role.kubernetes.io/infra_worker": "true"
+nodeSelector: {}
+
+# Specify node affinity or anti-affinity specifications
+affinity: {}
+
+# tolerations:
+#   - key: "node_role"
+#     operator: "Equal"
+#     value: "infra_worker"
+#     effect: "NoSchedule"
+tolerations: []
+
+# Optional automatic SMTP mail server credential management.
+# smtp_auth:
+#   username: ""
+#   password: ""
+
+extraVolumes: []
+  # - name: smtp-auth
+  #   secret:
+  #     secretName: elastalert-smtp-auth
+  #     items:
+  #       - key: smtp_auth.yaml
+  #         path: smtp_auth.yaml
+  #         mode: 0400
+
+extraVolumeMounts: []
+  # - name: smtp-auth
+  #   mountPath: /opt/elastalert/config-smtp/smtp_auth.yaml
+  #   subPath: smtp_auth.yaml
+  #   readOnly: true
+
+# Prometheus Exporter defined by port:
+prometheusScrapeAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/"

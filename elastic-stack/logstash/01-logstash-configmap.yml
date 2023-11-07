@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+  namespace: elastic-stack
+data:
+  logstash.yml: |-
+    http:
+      host: ${LOGSTASH_HOST:0.0.0.0}
+
+    xpack:
+      monitoring:
+        enabled: true
+        elasticsearch:
+          hosts: ["${LOGSTASH_ES_HOST}"]
+          username: ${LOGSTASH_ES_USERNAME}
+          password: ${LOGSTASH_ES_PASSWORD}
+          ssl:
+            certificate_authority: "/usr/share/logstash/certs/ca.crt"

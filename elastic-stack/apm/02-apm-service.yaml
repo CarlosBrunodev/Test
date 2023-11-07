@@ -1,0 +1,14 @@
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: apm-server
+#   namespace: elastic-stack
+# spec:
+#   ports:
+#   - name: apmserver
+#     port: 8200
+#     targetPort: 8200
+#   selector:
+#     apm.k8s.elastic.co/name: elastic
+#     common.k8s.elastic.co/type: apm-server
+#   type: NodePort

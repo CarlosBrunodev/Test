@@ -1,0 +1,53 @@
+######
+name: "AL-220526-08IM-infraestrutura-SIOP-problemas-de-envio-de-estatistica-de-instrumentacao-v1"
+type: frequency
+index: siop*
+
+description: "Alerta de atuação para problemas/limitações conhecidas do Weave Net."
+
+###EVENTO-QUERY###
+num_events: 1
+
+timeframe:
+    minutes: 5
+
+buffer_time:
+    minutes: 5
+
+filter:
+  - query:
+      query_string:
+        query: "message: \"*Following events were not transferred successfully*\" AND kubernetes.pod.name: *prd*"
+
+query_key:
+   - "kubernetes.pod.name"
+ 
+realert:
+   minutes: 30
+
+###DESCRIPTION###
+alert_subject: "AL-220526-08IM - Infraestrutura - SIOP - Problemas de envio de estatística de Instrumentacao"
+alert_subject_args: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name"]
+alert_text_type: "alert_text_only"
+#include: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name"]
+exclude: ["_id","_index","_type"]
+alert_text_args: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name"]
+alert_text: "\n
+Alerta para problemas de envio de dados da intrumentação que pode afetar a confiabilidade dos monitoramentos e alertas em si.\n
+- Code: AL-220526-08IM\n
+- Severidade: Critico\n
+- Data/hora: {4}\n
+- kubernetes.pod.name: {0}\n
+- kubernetes.namespace.name: {2}\n
+- kubernetes.container.name: {6}\n 
+- kubernetes.pod.ip: {5}\n
+- message: {3}\n
+- mensagem:\n
+Foram detectados indícios de problemas de conectividade que estão afetando parcialmente a aplicação {0}. Favor manter monitoramento próximo do Porto/Terminal correlacionado."
+
+alert:
+  - "ms_teams"
+ms_teams_theme_color: "#6600ff"
+ms_teams_webhook_url: "MS Teams Webhook URL"
+ms_teams_ca_certs: False
+ms_teams_ignore_ssl_errors: True

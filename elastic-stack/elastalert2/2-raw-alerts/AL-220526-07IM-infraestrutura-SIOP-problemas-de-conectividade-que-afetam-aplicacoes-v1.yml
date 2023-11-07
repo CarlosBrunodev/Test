@@ -1,0 +1,53 @@
+######
+name: "AL-220526-07IM-infraestrutura-SIOP-problemas-de-conectividade-que-afetam-aplicacoes-v1"
+type: frequency
+index: siop*
+
+description: "Alerta de atuação para problemas/limitações conhecidas do Weave Net."
+
+###EVENTO-QUERY###
+num_events: 1
+
+timeframe:
+    minutes: 5
+
+buffer_time:
+    minutes: 5
+
+filter:
+  - query:
+      query_string:
+        query: "message: (\"Connection refused\" OR \"Connection failed\" OR \"Timeout\" OR \"No route to host\" OR \"No such device or address\" OR \"The operation was canceled\") AND kubernetes.pod.name : *prd* AND NOT message : *INFO* AND NOT message : *UnresolvedAddressException*"
+
+query_key:
+   - "kubernetes.pod.name"
+ 
+realert:
+   minutes: 30
+
+###DESCRIPTION###
+alert_subject: "AL-220526-07IM - Infraestrutura - SIOP - Problemas de conectividade que afetam aplicacoes"
+alert_subject_args: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name"]
+alert_text_type: "alert_text_only"
+#include: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name"]
+exclude: ["_id","_index","_type"]
+alert_text_args: ["kubernetes.pod.name","kubernetes.worker.name","kubernetes.namespace.name","message","@timestamp","kubernetes.pod.ip","kubernetes.container.name"]
+alert_text: "\n
+Título: Informativo para ciência dos responsáveis e tomada de ações.\n
+- Code: AL-220526-07IM\n
+- Severidade: Médio\n
+- Data/hora: {4}\n
+- kubernetes.pod.name: {0}\n
+- kubernetes.namespace.name: {2}\n
+- kubernetes.container.name: {6}\n 
+- kubernetes.pod.ip: {5}\n
+- message: {3}\n
+- mensagem:\n
+Foram detectados indícios de problemas de conectividade que estão afetando parcialmente a aplicação {0}. Favor manter monitoramento próximo do Porto/Terminal correlacionado."
+
+alert:
+  - "ms_teams"
+ms_teams_theme_color: "#6600ff"
+ms_teams_webhook_url: "MS Teams Webhook URL"
+ms_teams_ca_certs: False
+ms_teams_ignore_ssl_errors: True
